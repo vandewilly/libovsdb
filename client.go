@@ -38,7 +38,7 @@ func newOvsdbClient(c *rpc2.Client) *OvsdbClient {
 	return ovs
 }
 
-// Would rather replace this connection map with an OvsdbClient Receiver scoped method
+//   Would rather replace this connection map with an OvsdbClient Receiver scoped method
 // Unfortunately rpc2 package acts wierd with a receiver scoped method and needs some investigation.
 var connections map[*rpc2.Client]*OvsdbClient
 var connectionsMutex = &sync.RWMutex{}
