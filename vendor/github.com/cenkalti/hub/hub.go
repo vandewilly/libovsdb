@@ -1,4 +1,5 @@
 // Package hub provides a simple event dispatcher for publish/subscribe pattern.
+// Optimized for publish calls.
 package hub
 
 import "sync"
@@ -12,8 +13,6 @@ type Event interface {
 
 // Hub is an event dispatcher, publishes events to the subscribers
 // which are subscribed for a specific event type.
-// Optimized for publish calls.
-// The handlers may be called in order different than they are registered.
 type Hub struct {
 	subscribers map[Kind][]handler
 	m           sync.RWMutex
@@ -25,28 +24,24 @@ type handler struct {
 	id uint64
 }
 
+// New returns pointer to a new Hub.
+func New() *Hub {
+	return &Hub{subscribers: make(map[Kind][]handler)}
+}
+
 // Subscribe registers f for the event of a specific kind.
 func (h *Hub) Subscribe(kind Kind, f func(Event)) (cancel func()) {
-	var cancelled bool
 	h.m.Lock()
 	h.seq++
 	id := h.seq
-	if h.subscribers == nil {
-		h.subscribers = make(map[Kind][]handler)
-	}
 	h.subscribers[kind] = append(h.subscribers[kind], handler{id: id, f: f})
 	h.m.Unlock()
 	return func() {
 		h.m.Lock()
-		if cancelled {
-			h.m.Unlock()
-			return
-		}
-		cancelled = true
 		a := h.subscribers[kind]
-		for i, f := range a {
-			if f.id == id {
-				a[i], h.subscribers[kind] = a[len(a)-1], a[:len(a)-1]
+		for i, h := range a {
+			if h.id == id {
+				a[i], a = a[len(a)-1], a[:len(a)-1]
 				break
 			}
 		}
@@ -69,7 +64,7 @@ func (h *Hub) Publish(e Event) {
 }
 
 // DefaultHub is the default Hub used by Publish and Subscribe.
-var DefaultHub Hub
+var DefaultHub = New()
 
 // Subscribe registers f for the event of a specific kind in the DefaultHub.
 func Subscribe(kind Kind, f func(Event)) (cancel func()) {
